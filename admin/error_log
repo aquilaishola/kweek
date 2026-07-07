@@ -1,0 +1,5 @@
+[03-Jul-2026 10:55:29 UTC] Webhook log error: SQLSTATE[23000]: Integrity constraint violation: 4025 CONSTRAINT `webhook_logs.payload` failed for `schedwav_kweek`.`webhook_logs`
+[03-Jul-2026 11:04:55 UTC] Webhook log error: SQLSTATE[23000]: Integrity constraint violation: 4025 CONSTRAINT `webhook_logs.payload` failed for `schedwav_kweek`.`webhook_logs`
+[03-Jul-2026 13:23:10 UTC] Webhook log error: SQLSTATE[23000]: Integrity constraint violation: 4025 CONSTRAINT `webhook_logs.payload` failed for `schedwav_kweek`.`webhook_logs`
+[04-Jul-2026 10:55:43 UTC] PHP Parse error:  Unmatched '}' in /home/schedwav/d.schedwave.com/admin/merchants.php on line 47
+[05-Jul-2026 14:16:15 UTC] Webhook log error: SQLSTATE[23000]: Integrity constraint violation: 4025 CONSTRAINT `webhook_logs.payload` failed for `schedwav_kweek`.`webhook_logs`
