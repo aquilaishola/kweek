@@ -92,6 +92,28 @@ No website. No POS. No code. Just a link.
 
 ---
 
+## 🔑 Demo Login
+
+Use the following credentials to explore the live demo.
+
+**Merchant dashboard** — `https://d.schedwave.com/login`
+
+| Field | Value |
+|---|---|
+| Email | `aquilaishola@gmail.com` |
+| Password | `Aquila@2010` |
+
+**Admin panel** — `https://d.schedwave.com/admin/login`
+
+| Field | Value |
+|---|---|
+| Email | `admin@kweek.ng` |
+| Password | `Admin@2026` |
+
+> ⚠️ These are shared demo credentials for hackathon judging purposes only. Do not use them for real transactions, and don't reuse these passwords elsewhere.
+
+---
+
 ## 🔒 Security Notes
 
 - All payments are re-verified server-to-server against Nomba's API before any wallet is credited — a spoofed webhook request cannot trigger a payout
