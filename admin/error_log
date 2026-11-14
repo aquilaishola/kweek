@@ -1,0 +1,45 @@
+[04-Aug-2026 00:07:54 UTC] PHP Warning:  include(/home/schedwav/kweek.ng/admin/includes/header.php): Failed to open stream: No such file or directory in /home/schedwav/kweek.ng/admin/dashboard.php on line 46
+[04-Aug-2026 00:07:54 UTC] PHP Warning:  include(/home/schedwav/kweek.ng/admin/includes/header.php): Failed to open stream: No such file or directory in /home/schedwav/kweek.ng/admin/dashboard.php on line 46
+[04-Aug-2026 00:07:54 UTC] PHP Warning:  include(): Failed opening '/home/schedwav/kweek.ng/admin/includes/header.php' for inclusion (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/schedwav/kweek.ng/admin/dashboard.php on line 46
+[04-Aug-2026 00:07:54 UTC] PHP Warning:  include(/home/schedwav/kweek.ng/admin/includes/footer.php): Failed to open stream: No such file or directory in /home/schedwav/kweek.ng/admin/dashboard.php on line 135
+[04-Aug-2026 00:07:54 UTC] PHP Warning:  include(/home/schedwav/kweek.ng/admin/includes/footer.php): Failed to open stream: No such file or directory in /home/schedwav/kweek.ng/admin/dashboard.php on line 135
+[04-Aug-2026 00:07:54 UTC] PHP Warning:  include(): Failed opening '/home/schedwav/kweek.ng/admin/includes/footer.php' for inclusion (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/schedwav/kweek.ng/admin/dashboard.php on line 135
+[04-Aug-2026 22:02:41 UTC] kycStorageDir: /home/schedwav/kyc_secure
+[04-Aug-2026 22:02:41 UTC] resolved base realpath: '/home/schedwav/kyc_secure'
+[04-Aug-2026 22:02:41 UTC] PHP Warning:  Undefined variable $stored in /home/schedwav/kweek.ng/admin/kyc-document.php on line 8
+[04-Aug-2026 22:02:41 UTC] candidate: /home/schedwav/kyc_secure/
+[04-Aug-2026 22:02:41 UTC] PHP Warning:  Undefined variable $stored in /home/schedwav/kweek.ng/admin/kyc-document.php on line 9
+[04-Aug-2026 22:02:41 UTC] resolved path: NULL
+[04-Aug-2026 22:04:26 UTC] kycStorageDir: /home/schedwav/kyc_secure
+[04-Aug-2026 22:04:26 UTC] resolved base realpath: '/home/schedwav/kyc_secure'
+[04-Aug-2026 22:04:26 UTC] PHP Warning:  Undefined variable $stored in /home/schedwav/kweek.ng/admin/kyc-document.php on line 8
+[04-Aug-2026 22:04:26 UTC] candidate: /home/schedwav/kyc_secure/
+[04-Aug-2026 22:04:26 UTC] PHP Warning:  Undefined variable $stored in /home/schedwav/kweek.ng/admin/kyc-document.php on line 9
+[04-Aug-2026 22:04:26 UTC] resolved path: NULL
+[04-Aug-2026 22:04:26 UTC] stored value: 'nin_15_dd25e2a1ef21e4d3.jpg'
+[04-Aug-2026 22:04:26 UTC] candidate: /home/schedwav/kyc_secure/nin_15_dd25e2a1ef21e4d3.jpg
+[04-Aug-2026 22:04:26 UTC] resolved path: '/home/schedwav/kyc_secure/nin_15_dd25e2a1ef21e4d3.jpg'
+[04-Aug-2026 22:08:19 UTC] kycStorageDir: /home/schedwav/kyc_secure
+[04-Aug-2026 22:08:19 UTC] resolved base realpath: '/home/schedwav/kyc_secure'
+[04-Aug-2026 22:08:19 UTC] PHP Warning:  Undefined variable $stored in /home/schedwav/kweek.ng/admin/kyc-document.php on line 8
+[04-Aug-2026 22:08:19 UTC] candidate: /home/schedwav/kyc_secure/
+[04-Aug-2026 22:08:19 UTC] PHP Warning:  Undefined variable $stored in /home/schedwav/kweek.ng/admin/kyc-document.php on line 9
+[04-Aug-2026 22:08:19 UTC] resolved path: NULL
+[04-Aug-2026 22:08:19 UTC] stored value: 'nin_15_dd25e2a1ef21e4d3.jpg'
+[04-Aug-2026 22:08:19 UTC] candidate: /home/schedwav/kyc_secure/nin_15_dd25e2a1ef21e4d3.jpg
+[04-Aug-2026 22:08:19 UTC] resolved path: '/home/schedwav/kyc_secure/nin_15_dd25e2a1ef21e4d3.jpg'
+[04-Aug-2026 22:17:20 UTC] kycStorageDir: /home/schedwav/kyc_secure
+[04-Aug-2026 22:17:20 UTC] resolved base realpath: '/home/schedwav/kyc_secure'
+[04-Aug-2026 22:17:20 UTC] PHP Warning:  Undefined variable $stored in /home/schedwav/kweek.ng/admin/kyc-document.php on line 8
+[04-Aug-2026 22:17:20 UTC] candidate: /home/schedwav/kyc_secure/
+[04-Aug-2026 22:17:20 UTC] PHP Warning:  Undefined variable $stored in /home/schedwav/kweek.ng/admin/kyc-document.php on line 9
+[04-Aug-2026 22:17:20 UTC] resolved path: NULL
+[04-Aug-2026 22:17:20 UTC] stored value: 'nin_15_dd25e2a1ef21e4d3.jpg'
+[04-Aug-2026 22:17:20 UTC] candidate: /home/schedwav/kyc_secure/nin_15_dd25e2a1ef21e4d3.jpg
+[04-Aug-2026 22:17:20 UTC] resolved path: '/home/schedwav/kyc_secure/nin_15_dd25e2a1ef21e4d3.jpg'
+[04-Aug-2026 22:24:23 UTC] PHP Parse error:  Unmatched ']' in /home/schedwav/kweek.ng/admin/kyc-document.php on line 42
+[30-Sep-2026 00:52:06 UTC] PHP Warning:  require_once(/home/schedwav/kweek.ng/admin/includes/functions.php): Failed to open stream: No such file or directory in /home/schedwav/kweek.ng/admin/admin-usd-rate.php on line 14
+[30-Sep-2026 00:52:06 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/schedwav/kweek.ng/admin/includes/functions.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/schedwav/kweek.ng/admin/admin-usd-rate.php:14
+Stack trace:
+#0 {main}
+  thrown in /home/schedwav/kweek.ng/admin/admin-usd-rate.php on line 14

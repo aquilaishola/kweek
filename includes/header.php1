@@ -1,0 +1,434 @@
+<?php
+
+$pageTitle  = $pageTitle  ?? 'Kweek';
+$activePage = $activePage ?? '';
+
+$flash = function_exists('flashHtml') ? flashHtml() : '';
+
+// unread notifications (bell badge + dropdown)
+$unreadCount = 0;
+$notifs      = [];
+if (!empty($user['id'])) {
+    $stmt = db()->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0");
+    $stmt->execute([$user['id']]);
+    $unreadCount = (int) $stmt->fetchColumn();
+
+    $stmt = db()->prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 6");
+    $stmt->execute([$user['id']]);
+    $notifs = $stmt->fetchAll();
+}
+
+// pending orders (badge on the Orders nav link)
+$pendingOrdersCount = 0;
+if (!empty($user['id'])) {
+    $stmt = db()->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND status = 'pending_confirmation'");
+    $stmt->execute([$user['id']]);
+    $pendingOrdersCount = (int) $stmt->fetchColumn();
+}
+
+// trial days remaining (for sidebar plan chip)
+$trialDaysLeft = null;
+if (!empty($user['trial_ends_at'])) {
+    $diff = (strtotime($user['trial_ends_at']) - time()) / 86400;
+    $trialDaysLeft = max(0, (int) ceil($diff));
+}
+
+$planChipDaysLeft = null;
+$planChipIsTrial  = false;
+if (!empty($user['id']) && ($user['plan'] ?? 'free') !== 'free') {
+    $chipSub = db()->prepare("SELECT status, ends_at FROM subscriptions WHERE user_id=? AND status IN ('active','trial') ORDER BY created_at DESC LIMIT 1");
+    $chipSub->execute([$user['id']]);
+    $chipRow = $chipSub->fetch();
+    if ($chipRow && !empty($chipRow['ends_at'])) {
+        $planChipIsTrial  = $chipRow['status'] === 'trial';
+        $chipDiff          = (strtotime($chipRow['ends_at']) - time()) / 86400;
+        $planChipDaysLeft  = max(0, (int) ceil($chipDiff));
+    }
+}
+
+$viewer = sessionUser();
+$onTeam = $viewer && isTeamMember($viewer);
+
+$initials = '';
+if (!empty($viewer['name'])) {
+    $parts = preg_split('/\s+/', trim($viewer['name']));
+    $initials = strtoupper(substr($parts[0], 0, 1) . (isset($parts[1]) ? substr($parts[1], 0, 1) : ''));
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><?= htmlspecialchars($pageTitle) ?> — Kweek</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/kweek-icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/img/kweek-icon-16.png">
+<link rel="apple-touch-icon" sizes="192x192" href="/assets/img/kweek-icon-192.png">
+<meta name="theme-color" content="#0F0E1C">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<link rel="stylesheet" href="/assets/css/app.css">
+<style>
+.sidebar-toggle{display:none;background:none;border:none;cursor:pointer;color:var(--ink);font-size:22px;padding:6px;margin-right:4px}
+.app-overlay{position:fixed;inset:0;background:rgba(15,14,28,.5);z-index:290;display:none}
+.app-overlay.open{display:block}
+
+@media (max-width:960px){
+  .app-sidebar{
+    display:flex !important;
+    flex-direction:column;
+    position:fixed; top:0; left:0; z-index:300;
+    height:100dvh;
+    width:270px;
+    max-width:82vw;
+    transform:translateX(-100%);
+    transition:transform .28s ease;
+    box-shadow:0 0 0 rgba(0,0,0,0);
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .app-sidebar.open{ transform:translateX(0); box-shadow:20px 0 50px -20px rgba(0,0,0,.35); }
+  .sidebar-toggle{ display:flex; align-items:center; justify-content:center; }
+  .side-close{ display:flex !important; }
+}
+.side-close{
+  display:none; align-items:center; justify-content:center;
+  width:30px; height:30px; border-radius:8px; background:rgba(255,255,255,.06);
+  border:none; color:rgba(255,255,255,.7); font-size:17px; cursor:pointer; margin-left:auto;
+}
+.side-close:hover{ background:rgba(255,255,255,.12); color:#fff; }
+.side-brand-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:26px; padding:0 6px; }
+.side-brand-row .side-brand{ margin-bottom:0; padding:0; }
+.nav-badge-warn{ margin-left:auto; background:var(--warning); color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:9999px; }
+
+/* Grouped nav labels */
+.side-group-label{ font-size:10px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:rgba(255,255,255,.32); padding:16px 12px 6px; }
+.side-group-label:first-child{ padding-top:2px; }
+
+/* User row + sign-out, sitting together at the bottom */
+.side-bottom{ margin-top:auto; display:flex; flex-direction:column; gap:2px; padding-top:10px; border-top:1px solid rgba(255,255,255,.08); }
+.side-user-row{ display:flex; align-items:center; gap:10px; padding:10px; border-radius:var(--r-md); text-decoration:none; transition:background .15s; flex:1; min-width:0; }
+.side-user-row:hover{ background:rgba(255,255,255,.06); }
+.side-user-av{ width:34px; height:34px; border-radius:50%; background:var(--purple-600); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; flex-shrink:0; }
+.side-user-info{ flex:1; min-width:0; }
+.side-user-name{ font-size:13px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.side-user-plan{ font-size:11px; color:rgba(255,255,255,.5); text-transform:capitalize; }
+.side-user-row-wrap{ display:flex; align-items:center; gap:4px; }
+.side-signout-btn{
+  display:flex; align-items:center; justify-content:center; width:34px; height:34px; flex-shrink:0;
+  border-radius:var(--r-md); background:none; border:none; cursor:pointer;
+  color:#FCA5A5; font-size:17px; text-decoration:none; transition:background .15s,color .15s;
+}
+.side-signout-btn:hover{ background:rgba(220,38,38,.15); color:#fff; }
+
+.flash{ display:flex; align-items:center; gap:10px; padding:13px 16px; border-radius:var(--r-lg); margin-bottom:20px; font-size:13.5px; font-weight:500; }
+.flash i{ font-size:17px; flex-shrink:0; }
+.flash-success{ background:var(--success-bg); color:var(--success); border:1px solid rgba(30,158,90,.25); }
+.flash-error{ background:var(--danger-bg); color:var(--danger); border:1px solid rgba(220,38,38,.2); }
+.flash-warning{ background:var(--warning-bg); color:var(--warning); border:1px solid rgba(217,119,6,.25); }
+.flash-info{ background:var(--purple-50); color:var(--purple-600); border:1px solid var(--purple-100); }
+
+/* ── plan/expiry chip in the topbar ─────────────────────────────── */
+.plan-chip{ display:flex; align-items:center; gap:8px; padding:7px 12px; border-radius:var(--r-full); font-size:12.5px; font-weight:600; text-decoration:none; white-space:nowrap; }
+.plan-chip.free{ background:var(--purple-50); color:var(--purple-600); border:1px solid var(--purple-100); }
+.plan-chip.paid{ background:var(--surface); color:var(--ink); border:1px solid var(--line); }
+.plan-chip.expiring{ background:var(--warning-bg); color:var(--warning); border:1px solid rgba(217,119,6,.25); }
+.plan-chip .upg{ color:var(--purple-600); font-weight:700; }
+.plan-chip:hover{ filter:brightness(0.97); }
+
+.form-group{ display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+.form-label{ font-size:12.5px; font-weight:600; color:var(--ink); letter-spacing:.2px; }
+.form-input-wrap{ position:relative; }
+.form-input-wrap .inp-icon{ position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:16px; color:var(--muted-2); pointer-events:none; }
+.form-input-wrap .form-input{ padding-left:38px; }
+
+.form-input, .form-select, .form-textarea{
+  width:100%; box-sizing:border-box; font-family:var(--font-body); font-size:14px; color:var(--ink);
+  background:var(--surface); border:1.5px solid transparent; border-bottom:1.5px solid var(--line);
+  border-radius:var(--r-sm); padding:11px 14px; outline:none; transition:all .15s;
+}
+.form-input::placeholder, .form-textarea::placeholder{ color:var(--muted-2); }
+.form-input:focus, .form-select:focus, .form-textarea:focus{
+  background:var(--paper); border-color:var(--purple-500); box-shadow:0 0 0 4px var(--purple-50);
+}
+.form-input:disabled, .form-select:disabled, .form-textarea:disabled{ opacity:.6; cursor:not-allowed; }
+.form-input.is-valid{ border-color:var(--success); }
+.form-input.is-invalid{ border-color:var(--danger); }
+.form-hint{ font-size:11.5px; color:var(--muted); margin-top:2px; }
+.form-textarea{ resize:vertical; min-height:88px; }
+.form-select{
+  cursor:pointer; appearance:none; padding-right:32px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23726E85' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center;
+}
+
+.modal{
+  display:none; position:fixed; inset:0; z-index:2000;
+  align-items:center; justify-content:center; padding:20px;
+  background:rgba(15,14,28,.55);
+  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+}
+.modal.open{ display:flex; }
+.modal-box{
+  background:var(--paper); border-radius:var(--r-lg); width:100%; max-width:480px;
+  max-height:88vh; display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:0 30px 80px -20px rgba(0,0,0,.45);
+  animation:kwModalIn .18s ease;
+}
+@keyframes kwModalIn{ from{ opacity:0; transform:translateY(10px) scale(.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
+.modal-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 22px; border-bottom:1px solid var(--line); flex-shrink:0; }
+.modal-title{ font-family:var(--font-display); font-size:16px; font-weight:700; color:var(--ink); }
+.modal-close{ background:none; border:none; cursor:pointer; color:var(--muted); font-size:18px; padding:5px; border-radius:var(--r-sm); transition:background .15s,color .15s; line-height:1; }
+.modal-close:hover{ background:var(--surface); color:var(--ink); }
+.modal-body{ padding:22px; overflow-y:auto; flex:1; -webkit-overflow-scrolling:touch; }
+.modal-foot{ display:flex; justify-content:flex-end; gap:10px; padding:16px 22px; border-top:1px solid var(--line); flex-shrink:0; }
+@media (max-width:480px){
+  .modal-box{ max-width:100%; }
+  .modal-foot{ flex-direction:column-reverse; }
+  .modal-foot .btn{ width:100%; justify-content:center; }
+}
+.table-wrap{ overflow-x:auto; }
+
+.btn-success{ background:var(--success); color:#fff; }
+.btn-success:hover{ background:#178A4F; }
+.btn-danger{ background:var(--danger); color:#fff; }
+.btn-danger:hover{ background:#B91C1C; }
+.btn-white{ background:#fff; color:var(--purple-600); }
+.btn-white:hover{ background:var(--purple-50); }
+
+.app-topbar{ display:flex; align-items:center; justify-content:space-between; flex-wrap:nowrap; gap:10px; }
+.app-topbar > div:first-child{ display:flex; align-items:center; min-width:0; flex:1 1 auto; }
+.topbar-title{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.topbar-actions{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.icon-btn, .topbar-avatar{ flex-shrink:0; }
+
+@media (max-width:960px){
+  .app-topbar{ padding:12px 16px; gap:8px; }
+  .topbar-actions{ gap:6px; }
+}
+
+@media (max-width:640px){
+  .plan-chip{ padding:8px; width:34px; height:34px; border-radius:50%; justify-content:center; }
+  .plan-chip .chip-label,
+  .plan-chip .upg{ display:none; }
+}
+
+@media (max-width:600px){
+  .notif-pop{ position:fixed !important; top:64px; right:10px; left:10px; width:auto; max-width:none; }
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+#flash-wrap{ margin-bottom:10px; }
+.side-nav{ margin-bottom: 18px; }
+.side-bottom{ margin-top:auto; display:flex; flex-direction:column; gap:14px; padding-top:18px; border-top:1px solid rgba(255,255,255,.08); }
+.side-user-row-wrap{ margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<?php include __DIR__ . '/../partials/preloader.php'; ?>
+
+<div class="app-overlay" id="app-overlay" onclick="kwCloseSidebar()"></div>
+
+<script>
+function kwOpenSidebar() {
+  document.getElementById('app-sidebar').classList.add('open');
+  document.getElementById('app-overlay').classList.add('open');
+}
+function kwCloseSidebar() {
+  document.getElementById('app-sidebar').classList.remove('open');
+  document.getElementById('app-overlay').classList.remove('open');
+}
+window.addEventListener('resize', () => { if (window.innerWidth > 960) kwCloseSidebar(); });
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.flash').forEach(function (el) {
+    var closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '<i class="ti ti-x"></i>';
+    closeBtn.setAttribute('aria-label', 'Dismiss');
+    closeBtn.style.cssText = 'margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;opacity:.6;font-size:15px;padding:2px;flex-shrink:0;line-height:1';
+    closeBtn.onclick = function () { dismissFlash(el); };
+    el.appendChild(closeBtn);
+    el._flashTimer = setTimeout(function () { dismissFlash(el); }, 5000);
+  });
+
+  function dismissFlash(el) {
+    if (!el || !el.parentNode) return;
+    clearTimeout(el._flashTimer);
+    el.style.overflow = 'hidden';
+    el.style.maxHeight = el.offsetHeight + 'px';
+    el.style.transition = 'max-height .25s ease, opacity .2s ease, margin-bottom .25s ease, padding .25s ease';
+    void el.offsetHeight;
+    requestAnimationFrame(function () {
+      el.style.maxHeight = '0px';
+      el.style.opacity = '0';
+      el.style.marginBottom = '0px';
+      el.style.paddingTop = '0px';
+      el.style.paddingBottom = '0px';
+    });
+    el.addEventListener('transitionend', function handler() {
+      el.removeEventListener('transitionend', handler);
+      el.remove();
+    });
+  }
+});
+
+function openModal(id) {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('click', function (e) {
+  document.querySelectorAll('.modal.open').forEach(function (m) {
+    if (e.target === m) closeModal(m.id);
+  });
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal.open').forEach(function (m) { closeModal(m.id); });
+  }
+});
+</script>
+
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="app-sidebar" id="app-sidebar">
+    <div class="side-brand-row">
+      <a href="/dashboard.php" class="side-brand">
+        <img src="/assets/img/kweek-lockup-dark.png" alt="Kweek">
+      </a>
+      <button class="side-close" id="side-close" onclick="kwCloseSidebar()" aria-label="Close menu"><i class="ti ti-x"></i></button>
+    </div>
+
+    <nav class="side-nav">
+      <div class="side-group-label">Overview</div>
+      <a href="/dashboard.php" class="side-link <?= $activePage === 'dashboard' ? 'active' : '' ?>"><i class="ti ti-layout-dashboard"></i> Dashboard</a>
+
+      <div class="side-group-label">Sell</div>
+      <a href="/payment-links.php" class="side-link <?= $activePage === 'payment-links' ? 'active' : '' ?>"><i class="ti ti-link"></i> Payment Links</a>
+      <a href="/orders.php" class="side-link <?= $activePage === 'orders' ? 'active' : '' ?>">
+        <i class="ti ti-shopping-cart"></i> Orders
+        <?php if ($pendingOrdersCount > 0): ?><span class="nav-badge-warn"><?= $pendingOrdersCount ?></span><?php endif; ?>
+      </a>
+      <a href="/customers.php" class="side-link <?= $activePage === 'customers' ? 'active' : '' ?>"><i class="ti ti-users-group"></i> Customers</a>
+
+      <div class="side-group-label">Grow</div>
+      <a href="/analytics.php" class="side-link <?= $activePage === 'analytics' ? 'active' : '' ?>"><i class="ti ti-chart-line"></i> Analytics</a>
+<!--<a href="/team.php" class="side-link <?= $activePage === 'team' ? 'active' : '' ?>"><i class="ti ti-users"></i> Team</a> -->
+      <a href="/api-webhooks.php" class="side-link <?= $activePage === 'api-webhooks' ? 'active' : '' ?>"><i class="ti ti-plug-connected"></i> API &amp; Webhooks</a>
+
+      <div class="side-group-label">Money</div>
+      <a href="/transactions.php" class="side-link <?= $activePage === 'transactions' ? 'active' : '' ?>"><i class="ti ti-receipt"></i> Transactions</a>
+      <a href="/withdraw.php" class="side-link <?= $activePage === 'withdraw' ? 'active' : '' ?>"><i class="ti ti-cash"></i> Withdraw</a>
+
+      <div class="side-group-label">Account</div>
+      <a href="/kyc.php" class="side-link <?= $activePage === 'kyc' ? 'active' : '' ?>">
+        <i class="ti ti-id-badge"></i> KYC Verification
+        <?php if (empty($user['bvn_verified'])): ?><span class="nav-badge-warn">!</span><?php endif; ?>
+      </a>
+      <a href="/settings.php" class="side-link <?= $activePage === 'settings' ? 'active' : '' ?>"><i class="ti ti-settings"></i> Settings</a>
+    </nav>
+
+    <!-- user profile + sign out, grouped together at the very bottom -->
+    <div class="side-bottom">
+<?php if ($planChipDaysLeft !== null): ?>
+<?php $subPctLeft = max(0, min(100, (int) round(($planChipDaysLeft / 30) * 100))); ?>
+<div class="side-plan">
+    <div class="sp-top">
+        <span class="sp-name"><?= htmlspecialchars(ucfirst($user['plan'])) ?> <?= $planChipIsTrial ? 'trial' : 'plan' ?></span>
+        <span class="sp-days"><?= $planChipDaysLeft ?>d left</span>
+    </div>
+    <div class="sp-progress-track">
+        <div class="sp-progress-fill <?= $planChipDaysLeft <= 3 ? 'is-low' : '' ?>" style="width:<?= $subPctLeft ?>%"></div>
+    </div>
+    <a href="/settings.php?tab=billing" class="sp-upgrade-btn">
+        <i class="ti ti-arrow-up-circle"></i> Upgrade now
+    </a>
+</div>
+<?php endif; ?>
+      <div class="side-user-row-wrap">
+        <a href="/settings.php" class="side-user-row">
+          <div class="side-user-av"><?= htmlspecialchars($initials ?: '?') ?></div>
+          <div class="side-user-info">
+            <div class="side-user-name"><?= htmlspecialchars($viewer['name'] ?? '') ?></div>
+            <div class="side-user-plan">
+              <?php if ($onTeam): ?>
+                <?= htmlspecialchars(ucfirst(teamRole($viewer))) ?> · <?= htmlspecialchars($user['name'] ?? 'team') ?>'s account
+              <?php else: ?>
+                <?= htmlspecialchars(ucfirst($user['plan'] ?? 'free')) ?> plan
+              <?php endif; ?>
+            </div>
+          </div>
+        </a>
+        <a href="/logout.php" class="side-signout-btn" title="Sign out" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="app-main">
+    <header class="app-topbar">
+      <div style="display:flex;align-items:center;">
+        <button class="sidebar-toggle" id="sidebar-toggle" onclick="kwOpenSidebar()" aria-label="Open menu"><i class="ti ti-menu-2"></i></button>
+        <div class="topbar-title">
+          <?= htmlspecialchars($pageTitle) ?>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <?php $plan = $user['plan'] ?? 'free'; ?>
+        <?php if ($plan === 'free'): ?>
+        <a href="/settings.php?tab=billing" class="plan-chip free">
+          <i class="ti ti-sparkles"></i> <span class="chip-label">Free plan</span> <span class="upg">· Upgrade to Pro</span>
+        </a>
+        <?php elseif ($planChipDaysLeft !== null): ?>
+        <a href="/settings.php?tab=billing" class="plan-chip <?= $planChipDaysLeft <= 3 ? 'expiring' : 'paid' ?>">
+          <i class="ti ti-<?= $planChipIsTrial ? 'clock' : 'crown' ?>"></i>
+          <span class="chip-label"><?= htmlspecialchars(ucfirst($plan)) ?> <?= $planChipIsTrial ? 'trial' : 'plan' ?>
+          · <?= $planChipDaysLeft ?>d <?= $planChipIsTrial ? 'left' : 'to renewal' ?></span>
+          <?php if ($plan !== 'business'): ?><span class="upg">· Upgrade</span><?php endif; ?>
+        </a>
+        <?php else: ?>
+        <span class="plan-chip paid"><i class="ti ti-crown"></i> <span class="chip-label"><?= htmlspecialchars(ucfirst($plan)) ?> plan</span></span>
+        <?php endif; ?>
+
+        <div style="position:relative">
+          <button class="icon-btn" id="notif-btn" aria-label="Notifications">
+            <i class="ti ti-bell"></i>
+            <?php if ($unreadCount > 0): ?><span class="icon-dot"></span><?php endif; ?>
+          </button>
+          <div class="notif-pop" id="notif-pop">
+            <div class="notif-head">
+              <span>Notifications</span>
+              <?php if ($unreadCount > 0): ?><a href="/notifications.php?read_all=1">Mark all read</a><?php endif; ?>
+            </div>
+            <?php if (empty($notifs)): ?>
+              <div class="notif-empty">You're all caught up.</div>
+            <?php else: ?>
+              <?php foreach ($notifs as $n): ?>
+              <a href="<?= htmlspecialchars($n['link'] ?: '#') ?>" class="notif-item <?= $n['is_read'] ? '' : 'unread' ?>">
+                <div class="notif-ic"><i class="ti ti-<?= htmlspecialchars($n['icon'] ?: 'bell') ?>"></i></div>
+                <div class="notif-body">
+                  <div class="t"><?= htmlspecialchars($n['title']) ?></div>
+                  <div class="s"><?= htmlspecialchars($n['message']) ?></div>
+                  <span class="time"><?= function_exists('timeAgo') ? timeAgo($n['created_at']) : htmlspecialchars($n['created_at']) ?></span>
+                </div>
+              </a>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </div>
+        </div>
+        <a href="/settings.php" class="topbar-avatar"><?= htmlspecialchars($initials ?: '?') ?></a>
+      </div>
+    </header>
+
+    <main class="app-content">
+      <?php if ($flash): ?><div id="flash-wrap"><?= $flash ?></div><?php endif; ?>
